@@ -4,7 +4,8 @@ use local::mqtt_connectivity::mqtt_client;
 use local::types::config::Config;
 
 use std::fs::File;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use async_mutex::Mutex;
 
 #[tokio::main]
 async fn main() -> () {
@@ -16,11 +17,11 @@ async fn main() -> () {
     println!("Starting....");
 
     let channel = Arc::new(Mutex::new(Channel::new(
-        config.node,
+        &config.node,
         config.local_pow,
         None,
-    )));
-    let (addr, msg) = match channel.lock().expect("").open() {
+    ).await));
+    let (addr, msg) = match channel.lock().await.open().await {
         Ok(a) => a,
         Err(_) => panic!("Could not connect to IOTA Node, try with another node!"),
     };

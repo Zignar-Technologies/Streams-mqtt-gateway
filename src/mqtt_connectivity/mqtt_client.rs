@@ -5,23 +5,16 @@ use gateway_core::gateway::publisher::Channel;
 
 extern crate paho_mqtt as mqtt;
 
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use async_mutex::Mutex;
+use futures::{executor::block_on, stream::StreamExt};
 use std::time::Duration;
-use std::{process, thread};
+use std::process;
 
 use once_cell::sync::Lazy;
 
 static TOPIC: Lazy<Mutex<StaticTopic>> =
     Lazy::new(|| Mutex::new(StaticTopic::new(String::default())));
-
-fn on_connect_failure(_cli: &mqtt::AsyncClient, _msgid: u16, rc: i32) {
-    println!("Connection attempt failed with error code {}.\n", rc);
-    thread::sleep(Duration::from_millis(2500));
-}
-
-fn on_connect_success(cli: &mqtt::AsyncClient, _msgid: u16) {
-    cli.subscribe(TOPIC.lock().unwrap().get_topic(), 1);
-}
 
 ///
 /// Starts the server on the provided port, the server will hand over requests to the handler functions
@@ -35,9 +28,10 @@ pub async fn start(
     channel: Arc<Mutex<Channel>>,
     keystore: Arc<Mutex<KeyManager>>,
 ) -> () {
-    let mut state = State::new(channel, keystore);
 
-    TOPIC.lock().unwrap().set_topic(topic.clone());
+    let mut state = State::new(channel, keystore).await;
+
+    TOPIC.lock().await.set_topic(topic.clone());
 
     let create_opts = mqtt::CreateOptionsBuilder::new()
         .server_uri(format!("{}:{}", broker_ip, broker_port))
@@ -50,13 +44,9 @@ pub async fn start(
         process::exit(1);
     });
 
-    cli.set_connected_callback(|_cli: &mqtt::AsyncClient| {});
-
-    cli.set_connection_lost_callback(|cli: &mqtt::AsyncClient| {
-        println!("Connection lost. Attempting reconnect.");
-        thread::sleep(Duration::from_millis(2500));
-        cli.reconnect_with_callbacks(on_connect_success, on_connect_failure);
-    });
+    if let Err(err) = block_on(async {
+        // Get message stream before connecting.
+        let mut strm = cli.get_stream(25);
 
     let conn_opts = mqtt::ConnectOptionsBuilder::new()
         .keep_alive_interval(Duration::from_secs(20))
@@ -66,23 +56,36 @@ pub async fn start(
         .password(password)
         .finalize();
 
-    cli.set_message_callback(move |_cli, msg| {
-        if let Some(msg) = msg {
+    println!("Connecting to the MQTT server...");
+    cli.connect(conn_opts).await?;
+
+    cli.subscribe(TOPIC.lock().await.get_topic(), 1).await?;
+
+    println!("Waiting for messages...");
+
+    while let Some(msg_opt) = strm.next().await {
+        if let Some(msg) = msg_opt {
+            // println!("{}", msg);
             let payload_str = msg.payload_str();
-            state.handle_data(payload_str.to_string());
+            state.handle_data(payload_str.to_string()).await;
         }
-    });
+        else {
+            // A "None" means we were disconnected. Try to reconnect...
+            println!("Lost connection. Attempting reconnect.");
+            while let Err(err) = cli.reconnect().await {
+                println!("Error reconnecting: {}", err);
+                // For tokio use: tokio::time::delay_for()
+                async_std::task::sleep(Duration::from_millis(1000)).await;
 
-    // Make the connection to the broker
-    cli.connect_with_callbacks(conn_opts, on_connect_success, on_connect_failure);
-    println!(
-        "Listening for topic: {} on http://{}:{}",
-        topic, broker_ip, broker_port
-    );
+                }
+            }
+        }
 
-    // Just wait for incoming messages.
-    loop {
-        thread::sleep(Duration::from_millis(1000));
+    Ok::<(), mqtt::Error>(())
+    }
+) 
+    {
+    eprintln!("{}", err);
     }
 }
 
@@ -92,14 +95,14 @@ struct State {
 }
 
 impl State {
-    pub fn new(channel: Arc<Mutex<Channel>>, keystore: Arc<Mutex<KeyManager>>) -> Self {
+    pub async fn new(channel: Arc<Mutex<Channel>>, keystore: Arc<Mutex<KeyManager>>) -> Self {
         Self {
             channel: channel,
             keystore: keystore,
         }
     }
 
-    pub fn handle_data(&mut self, data: String) -> () {
-        handle_sensor_data(data, &self.channel, &self.keystore);
+    pub async fn handle_data(&mut self, data: String) -> () {
+        handle_sensor_data(data, &self.channel, &self.keystore).await;
     }
 }
