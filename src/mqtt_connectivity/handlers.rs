@@ -1,6 +1,5 @@
-use crate::device_auth::keystore::{authenticate, KeyManager};
+use serde_json::Value;
 use crate::timestamp_in_sec;
-use crate::types::sensor_data::SensorData;
 use std::sync::Arc;
 use async_mutex::Mutex;
 
@@ -14,26 +13,12 @@ use gateway_core::gateway::publisher::Channel;
 pub async fn handle_sensor_data(
     data: String,
     channel: &Arc<Mutex<Channel>>,
-    keystore: &Arc<Mutex<KeyManager>>,
 ) -> () {
     let data = data.to_owned();
     //let clean_str = std::str::from_utf8(&data).unwrap().replace("\u{0}", "");
-    let json_data: serde_json::Result<SensorData> = serde_json::from_str(&data);
+    let json_data: serde_json::Result<Value> = serde_json::from_str(&data);
     match json_data {
-        Ok(mut sensor_data) => {
-            let hash = keystore
-                .lock()
-                .await
-                .keystore
-                .api_keys_author
-                .clone();
-            if authenticate(&sensor_data.device, hash.clone()) {
-                sensor_data.device.to_string().push_str("_id");
-                sensor_data.timestamp = serde_json::Value::from(timestamp_in_sec());
-                println!(
-                    "New Message Recieved -- {:?} -- authorized request by device",
-                    timestamp_in_sec()
-                );
+        Ok(sensor_data) => {
                 let mut channel = channel.lock().await;
                 match channel.write_signed(&sensor_data).await {
                     Ok(msg_id) => println!("{:?}", msg_id),
@@ -42,12 +27,6 @@ pub async fn handle_sensor_data(
                         ()
                     }
                 };
-            } else {
-                println!(
-                    "New Message Recieved -- {:?} -- unauthorized request blocked",
-                    timestamp_in_sec()
-                )
-            }
         }
         Err(_e) => {
             println!(

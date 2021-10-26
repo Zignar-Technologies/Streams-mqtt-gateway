@@ -3,11 +3,11 @@
         "DEVICE_ID_1",
         "DEVICE_ID_2"
     ],
-    "username": "SGW",
-    "password": "F",
+    "username": "",
+    "password": "",
     "broker_ip": "mqtt.zignar.io",
     "broker_port": 1883,
     "topic": "iot2tangle",
-    "node": "https://chrysalis-nodes.iota.org:443",
+    "node": "https://api.lb-0.h.chrysalis-devnet.iota.cafe/",
     "local_pow": false
 }

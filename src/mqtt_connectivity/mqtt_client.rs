@@ -1,4 +1,3 @@
-use crate::device_auth::keystore::KeyManager;
 use crate::mqtt_connectivity::handlers::handle_sensor_data;
 use crate::types::static_topic::StaticTopic;
 use gateway_core::gateway::publisher::Channel;
@@ -26,10 +25,9 @@ pub async fn start(
     broker_port: u16,
     topic: String,
     channel: Arc<Mutex<Channel>>,
-    keystore: Arc<Mutex<KeyManager>>,
 ) -> () {
 
-    let mut state = State::new(channel, keystore).await;
+    let mut state = State::new(channel).await;
 
     TOPIC.lock().await.set_topic(topic.clone());
 
@@ -91,18 +89,16 @@ pub async fn start(
 
 struct State {
     channel: Arc<Mutex<Channel>>,
-    keystore: Arc<Mutex<KeyManager>>,
 }
 
 impl State {
-    pub async fn new(channel: Arc<Mutex<Channel>>, keystore: Arc<Mutex<KeyManager>>) -> Self {
+    pub async fn new(channel: Arc<Mutex<Channel>>) -> Self {
         Self {
             channel: channel,
-            keystore: keystore,
         }
     }
 
     pub async fn handle_data(&mut self, data: String) -> () {
-        handle_sensor_data(data, &self.channel, &self.keystore).await;
+        handle_sensor_data(data, &self.channel).await;
     }
 }
