@@ -61,6 +61,8 @@ pub async fn start(
 
     println!("Waiting for messages...");
 
+    //! This while loop listens to MQTT and forwards any message to the handle_data function
+    //! which in turn sends data to the tangle
     while let Some(msg_opt) = strm.next().await {
         if let Some(msg) = msg_opt {
             // println!("{}", msg);
@@ -100,5 +102,4 @@ impl State {
 
     pub async fn handle_data(&mut self, data: String) -> () {
         handle_sensor_data(data, &self.channel).await;
-    }
-}
+  

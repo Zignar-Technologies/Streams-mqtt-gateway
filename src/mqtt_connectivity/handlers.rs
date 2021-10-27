@@ -6,8 +6,8 @@ use async_mutex::Mutex;
 use gateway_core::gateway::publisher::Channel;
 
 ///
-/// Handles the reuqest from the sensor by parsing the provieded data into the SensorData Format.
-/// It authenticates the device through the "device" attribute, and if successfull published the data to the Tangle
+/// Handles the request from the sensor by parsing the provided data into the SensorData Format.
+/// It authenticates the device through the "device" attribute, and if successful published the data to the Tangle
 /// through the streams channel
 ///
 pub async fn handle_sensor_data(
@@ -19,8 +19,8 @@ pub async fn handle_sensor_data(
     let json_data: serde_json::Result<Value> = serde_json::from_str(&data);
     match json_data {
         Ok(sensor_data) => {
-                let mut channel = channel.lock().await;
-                match channel.write_signed(&sensor_data).await {
+                let mut channel = channel.lock().await; 
+                match channel.write_signed(&sensor_data).await { //! This is an asynchronous call to the write_signed() publisher function
                     Ok(msg_id) => println!("{:?}", msg_id),
                     Err(_e) => {
                         println!("Error: Could not send data to Tangle, try switching nodes");
@@ -30,7 +30,7 @@ pub async fn handle_sensor_data(
         }
         Err(_e) => {
             println!(
-                "New Message Recieved -- {:?} -- incorrectly formatted Data",
+                "New Message Received -- {:?} -- incorrectly formatted Data",
                 timestamp_in_sec()
             );
         }
