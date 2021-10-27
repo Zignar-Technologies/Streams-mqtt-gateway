@@ -18,7 +18,7 @@ pub struct KeyManager {
 
 impl KeyManager {
     ///
-    /// generates a new Keystore object by hashing the plaintext key and stroing it localy
+    /// generates a new Keystore object by hashing the plaintext key and string it localy
     ///
     pub fn new(new_keys_auth: Vec<String>) -> KeyManager {
         let mut hash_list = vec![];
@@ -36,7 +36,7 @@ impl KeyManager {
     }
 
     ///
-    /// recreates the API key struct from local storeg
+    /// recreates the API key struct from local storage
     ///
     pub fn restore() -> KeyManager {
         let rec: Keystore = serde_json::from_reader(File::open(PATH).unwrap()).unwrap();

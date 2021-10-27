@@ -5,7 +5,7 @@
     ],
     "username": "",
     "password": "",
-    "broker_ip": "mqtt.zignar.io",
+    "broker_ip": "mqtt.demo.zignar.io",
     "broker_port": 1883,
     "topic": "iot2tangle",
     "node": "https://api.lb-0.h.chrysalis-devnet.iota.cafe/",

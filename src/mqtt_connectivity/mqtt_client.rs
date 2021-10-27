@@ -102,4 +102,5 @@ impl State {
 
     pub async fn handle_data(&mut self, data: String) -> () {
         handle_sensor_data(data, &self.channel).await;
-  
+    }
+}
