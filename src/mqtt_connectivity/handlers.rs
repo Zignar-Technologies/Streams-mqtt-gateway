@@ -20,9 +20,9 @@ pub async fn handle_sensor_data(
     match json_data {
         Ok(sensor_data) => {
                 let mut channel = channel.lock().await; 
-                match channel.write_signed(&sensor_data).await { //! This is an asynchronous call to the write_signed() publisher function
+                match channel.write_signed(&sensor_data).await { // TODO This is an asynchronous call to the write_signed() publisher function
                     Ok(msg_id) => println!("{:?}", msg_id),
-                    Err(_e) => {
+                    Err(_e) =>
                         println!("Error: Could not send data to Tangle, try switching nodes");
                         ()
                     }
